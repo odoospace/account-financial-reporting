@@ -32,6 +32,16 @@ class AccountTrialBalanceWizard(models.TransientModel):
     def _print_report(self, cursor, uid, ids, data, context=None):
         context = context or {}
         # we update form with display account value
+        vals = self.read(cursor, uid, ids, ['analytic_segment_ids'], context=context)[0]
+        segment_ids = []
+        for i in vals['analytic_segment_ids']:
+            segment = self.pool.get('trial.balance.webkit.segments').browse(cursor, uid, i)
+            segment_ids += [segment.segment_id.id]
+            if segment.with_children:
+                segment_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
+        
+        data['form']['segment_ids'] = segment_ids
+
         data = self.pre_print_report(cursor, uid, ids, data, context=context)
 
         return {'type': 'ir.actions.report.xml',

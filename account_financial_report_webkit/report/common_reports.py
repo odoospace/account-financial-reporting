@@ -268,6 +268,10 @@ class CommonReportHeaderWebkit(common_report_header):
                                   ('company_id', '=', period.company_id.id)],
                                  limit=1)
 
+    def get_segment_ids(self, segment_ids):
+        segment_obj = self.pool.get('analytic_segment.segment')
+        return segment_obj.search(self.cursor, self.uid, [['id', 'in', segment_ids]])
+
     def periods_contains_move_lines(self, period_ids):
         if not period_ids:
             return False
@@ -368,11 +372,15 @@ class CommonReportHeaderWebkit(common_report_header):
     # Initial Balance helper      #
     ###############################
 
-    def _compute_init_balance(self, account_id=None, period_ids=None,
+    def _compute_init_balance(self, segment_ids, account_id=None, period_ids=None,
                               mode='computed', default_values=False):
         if not isinstance(period_ids, list):
             period_ids = [period_ids]
         res = {}
+
+        segment_ids = self.get_segment_ids(segment_ids)
+        if not isinstance(segment_ids, list):
+            segment_ids = [segment_ids]
 
         if not default_values:
             if not account_id or not period_ids:
@@ -382,10 +390,12 @@ class CommonReportHeaderWebkit(common_report_header):
                                     " sum(credit) AS credit, "
                                     " sum(debit)-sum(credit) AS balance, "
                                     " sum(amount_currency) AS curr_balance"
-                                    " FROM account_move_line"
-                                    " WHERE period_id in %s"
-                                    " AND account_id = %s",
-                                    (tuple(period_ids), account_id))
+                                    " FROM account_move_line as l"
+                                    " LEFT JOIN account_move as m ON m.id = l.move_id"
+                                    " WHERE l.period_id in %s"
+                                    " AND l.account_id = %s"
+                                    " AND m.segment_id in %s",
+                                    (tuple(period_ids), account_id, tuple(segment_ids)))
                 res = self.cursor.dictfetchone()
 
             except Exception:
@@ -398,7 +408,7 @@ class CommonReportHeaderWebkit(common_report_header):
                 'init_balance_currency': res.get('curr_balance') or 0.0,
                 'state': mode}
 
-    def _read_opening_balance(self, account_ids, start_period):
+    def _read_opening_balance(self, account_ids, start_period, segment_ids):
         """ Read opening balances from the opening balance
         """
         opening_period_selected = self.get_included_opening_period(
@@ -412,11 +422,11 @@ class CommonReportHeaderWebkit(common_report_header):
 
         res = {}
         for account_id in account_ids:
-            res[account_id] = self._compute_init_balance(
+            res[account_id] = self._compute_init_balance(segment_ids,
                 account_id, opening_period_selected, mode='read')
         return res
 
-    def _compute_initial_balances(self, account_ids, start_period, fiscalyear):
+    def _compute_initial_balances(self, account_ids, start_period, fiscalyear, segment_ids):
         """We compute initial balance.
         If form is filtered by date all initial balance are equal to 0
         This function will sum pear and apple in currency amount if account as
@@ -437,23 +447,23 @@ class CommonReportHeaderWebkit(common_report_header):
         for acc in self.pool.get('account.account').browse(self.cursor,
                                                            self.uid,
                                                            account_ids):
-            res[acc.id] = self._compute_init_balance(default_values=True)
+            res[acc.id] = self._compute_init_balance(segment_ids, default_values=True)
             if acc.user_type.close_method == 'none':
                 # we compute the initial balance for close_method == none only
                 # when we print a GL during the year, when the opening period
                 # is not included in the period selection!
                 if pnl_periods_ids and not opening_period_selected:
-                    res[acc.id] = self._compute_init_balance(
+                    res[acc.id] = self._compute_init_balance(segment_ids,
                         acc.id, pnl_periods_ids)
             else:
-                res[acc.id] = self._compute_init_balance(acc.id, bs_period_ids)
+                res[acc.id] = self._compute_init_balance(segment_ids, acc.id, bs_period_ids)
         return res
 
     ################################################
     # Account move retrieval helper                #
     ################################################
     def _get_move_ids_from_periods(self, account_id, period_start, period_stop,
-                                   target_move):
+                                   target_move, segment_ids):
         move_line_obj = self.pool.get('account.move.line')
         period_obj = self.pool.get('account.period')
         periods = period_obj.build_ctx_periods(
@@ -461,18 +471,19 @@ class CommonReportHeaderWebkit(common_report_header):
         if not periods:
             return []
         search = [
-            ('period_id', 'in', periods), ('account_id', '=', account_id)]
+            ('period_id', 'in', periods), ('account_id', '=', account_id), ('segment_id', 'in', segment_ids)]
         if target_move == 'posted':
             search += [('move_id.state', '=', 'posted')]
         return move_line_obj.search(self.cursor, self.uid, search)
 
     def _get_move_ids_from_dates(self, account_id, date_start, date_stop,
-                                 target_move, mode='include_opening'):
+                                 target_move, segment_id, mode='include_opening'):
         # TODO imporve perfomance by setting opening period as a property
         move_line_obj = self.pool.get('account.move.line')
         search_period = [('date', '>=', date_start),
                          ('date', '<=', date_stop),
-                         ('account_id', '=', account_id)]
+                         ('account_id', '=', account_id),
+                         ('segment_id', 'in', segment_ids)]
 
         # actually not used because OpenERP itself always include the opening
         # when we get the periods from january to december
@@ -487,7 +498,7 @@ class CommonReportHeaderWebkit(common_report_header):
         return move_line_obj.search(self.cursor, self.uid, search_period)
 
     def get_move_lines_ids(self, account_id, main_filter, start, stop,
-                           target_move, mode='include_opening'):
+                           target_move, segment_ids,  mode='include_opening'):
         """Get account move lines base on form data"""
         if mode not in ('include_opening', 'exclude_opening'):
             raise except_orm(
@@ -496,11 +507,11 @@ class CommonReportHeaderWebkit(common_report_header):
 
         if main_filter in ('filter_period', 'filter_no'):
             return self._get_move_ids_from_periods(account_id, start, stop,
-                                                   target_move)
+                                                   target_move, segment_ids)
 
         elif main_filter == 'filter_date':
             return self._get_move_ids_from_dates(account_id, start, stop,
-                                                 target_move)
+                                                 target_move, segment_ids)
         else:
             raise except_orm(
                 _('No valid filter'), _('Please set a valid time filter'))

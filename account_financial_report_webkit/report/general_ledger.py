@@ -90,6 +90,9 @@ class GeneralLedgerWebkit(report_sxw.rml_parse, CommonReportHeaderWebkit):
         start_date = self._get_form_param('date_from', data)
         stop_date = self._get_form_param('date_to', data)
         do_centralize = self._get_form_param('centralize', data)
+
+        segment_ids = self._get_form_param('segment_ids', data)
+
         start_period = self.get_start_period_br(data)
         stop_period = self.get_end_period_br(data)
         fiscalyear = self.get_fiscalyear_br(data)
@@ -115,13 +118,13 @@ class GeneralLedgerWebkit(report_sxw.rml_parse, CommonReportHeaderWebkit):
         accounts = self.get_all_accounts(new_ids, exclude_type=['view'])
         if initial_balance_mode == 'initial_balance':
             init_balance_memoizer = self._compute_initial_balances(
-                accounts, start, fiscalyear)
+                accounts, start, fiscalyear, segment_ids)
         elif initial_balance_mode == 'opening_balance':
-            init_balance_memoizer = self._read_opening_balance(accounts, start)
+            init_balance_memoizer = self._read_opening_balance(accounts, start, segment_ids)
 
         ledger_lines_memoizer = self._compute_account_ledger_lines(
             accounts, init_balance_memoizer, main_filter, target_move, start,
-            stop)
+            stop, segment_ids)
         objects = self.pool.get('account.account').browse(self.cursor,
                                                           self.uid,
                                                           accounts,
@@ -213,11 +216,11 @@ class GeneralLedgerWebkit(report_sxw.rml_parse, CommonReportHeaderWebkit):
 
     def _compute_account_ledger_lines(self, accounts_ids,
                                       init_balance_memoizer, main_filter,
-                                      target_move, start, stop):
+                                      target_move, start, stop, segment_ids):
         res = {}
         for acc_id in accounts_ids:
             move_line_ids = self.get_move_lines_ids(
-                acc_id, main_filter, start, stop, target_move)
+                acc_id, main_filter, start, stop, target_move, segment_ids)
             if not move_line_ids:
                 res[acc_id] = []
                 continue

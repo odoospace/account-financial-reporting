@@ -79,12 +79,20 @@ class AccountReportGeneralLedgerWizard(models.TransientModel):
             cr, uid, ids, data, context=context)
         # will be used to attach the report on the main account
         data['ids'] = [data['form']['chart_account_id']]
-        vals = self.read(cr, uid, ids,
-                         ['amount_currency',
-                          'display_account',
-                          'account_ids',
-                          'centralize'],
-                         context=context)[0]
+        vals = self.read(cr, uid, ids, [
+            'amount_currency',
+            'display_account',
+            'account_ids',
+            'centralize', 'analytic_segment_ids'
+        ], context=context)[0]
+
+        segment_ids = []
+        for i in vals['analytic_segment_ids']:
+            segment = self.pool.get('general.ledger.webkit.segments').browse(cr, uid, i)
+            segment_ids += [segment.segment_id.id]
+            if segment.with_children:
+                segment_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
+        vals['segment_ids'] = segment_ids  
         data['form'].update(vals)
         return data
 
