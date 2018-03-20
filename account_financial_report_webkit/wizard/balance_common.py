@@ -407,7 +407,7 @@ class AccountBalanceCommonWizard(models.TransientModel):
         # will be used to attach the report on the main account
         data['ids'] = [data['form']['chart_account_id']]
 
-        fields_to_read = ['account_ids', 'account_level']
+        fields_to_read = ['account_ids', 'account_level', 'segment_ids']
         fields_to_read += self.DYNAMIC_FIELDS
         vals = self.read(cr, uid, ids, fields_to_read, context=context)[0]
 

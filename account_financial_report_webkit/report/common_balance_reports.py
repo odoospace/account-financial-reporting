@@ -39,7 +39,7 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
         return [key for key, val in dic.iteritems() if value in val][0]
 
     def _get_account_details(self, account_ids, target_move, fiscalyear,
-                             main_filter, start, stop, initial_balance_mode,
+                             main_filter, start, stop, initial_balance_mode, segment_ids,
                              context=None):
         """
         Get details of accounts to display on the report
@@ -77,7 +77,7 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
             init_balance = self._read_opening_balance(account_ids, start)
         elif initial_balance_mode:
             init_balance = self._compute_initial_balances(
-                account_ids, start, fiscalyear)
+                account_ids, start, fiscalyear, segment_ids)
 
         ctx = context.copy()
         ctx.update({'state': target_move,
@@ -124,7 +124,7 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
         return accounts_by_id
 
     def _get_comparison_details(self, data, account_ids, target_move,
-                                comparison_filter, index, context=None):
+                                comparison_filter, index, segment_ids, context=None):
         """
 
         @param data: data of the wizard form
@@ -161,7 +161,7 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
                 and self._get_initial_balance_mode(start) or False
             accounts_by_ids = self._get_account_details(
                 account_ids, target_move, fiscalyear, details_filter,
-                start, stop, initial_balance_mode, context=context)
+                start, stop, initial_balance_mode, segment_ids, context=context)
             comp_params = {
                 'comparison_filter': comparison_filter,
                 'fiscalyear': fiscalyear,
@@ -258,6 +258,8 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
         stop_date = self._get_form_param('date_to', data)
         chart_account = self._get_chart_account_id_br(data)
 
+        segment_ids = self._get_form_param('segment_ids', data)
+
         start_period, stop_period, start, stop = \
             self._get_start_stop_for_filter(main_filter, fiscalyear,
                                             start_date, stop_date,
@@ -278,14 +280,14 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
         # get details for each account, total of debit / credit / balance
         accounts_by_ids = self._get_account_details(
             account_ids, target_move, fiscalyear, main_filter, start, stop,
-            initial_balance_mode, context=lang_ctx)
+            initial_balance_mode, segment_ids, context=lang_ctx)
 
         comparison_params = []
         comp_accounts_by_ids = []
         for index in range(max_comparison):
             if comp_filters[index] != 'filter_no':
                 comparison_result, comp_params = self._get_comparison_details(
-                    data, account_ids, target_move, comp_filters[index], index,
+                    data, account_ids, target_move, comp_filters[index], index, segment_ids,
                     context=lang_ctx)
                 comparison_params.append(comp_params)
                 comp_accounts_by_ids.append(comparison_result)

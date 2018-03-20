@@ -41,7 +41,6 @@ class AccountTrialBalanceWizard(models.TransientModel):
                 segment_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
         
         data['form']['segment_ids'] = segment_ids
-
         data = self.pre_print_report(cursor, uid, ids, data, context=context)
 
         return {'type': 'ir.actions.report.xml',
