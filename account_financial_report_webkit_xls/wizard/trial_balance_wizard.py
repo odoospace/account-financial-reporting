@@ -16,7 +16,17 @@ class AccountTrialBalanceWizard(models.TransientModel):
         context = context or {}
         if context.get('xls_export'):
             # we update form with display account value
+            vals = self.read(cr, uid, ids, ['analytic_segment_ids'], context=context)[0]
+            segment_ids = []
+            for i in vals['analytic_segment_ids']:
+                segment = self.pool.get('trial.balance.webkit.segments').browse(cr, uid, i)
+                segment_ids += [segment.segment_id.id]
+                if segment.with_children:
+                    segment_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
+
+            data['form']['segment_ids'] = segment_ids
             data = self.pre_print_report(cr, uid, ids, data, context=context)
+
             return {'type': 'ir.actions.report.xml',
                     'report_name': 'account.account_report_trial_balance_xls',
                     'datas': data}
