@@ -386,16 +386,27 @@ class CommonReportHeaderWebkit(common_report_header):
             if not account_id or not period_ids:
                 raise Exception('Missing account or period_ids')
             try:
-                self.cursor.execute("SELECT sum(debit) AS debit, "
-                                    " sum(credit) AS credit, "
-                                    " sum(debit)-sum(credit) AS balance, "
-                                    " sum(amount_currency) AS curr_balance"
-                                    " FROM account_move_line as l"
-                                    " LEFT JOIN account_move as m ON m.id = l.move_id"
-                                    " WHERE l.period_id in %s"
-                                    " AND l.account_id = %s"
-                                    " AND m.segment_id in %s",
-                                    (tuple(period_ids), account_id, tuple(segment_ids)))
+                if segment_ids:
+                    self.cursor.execute("SELECT sum(debit) AS debit, "
+                                        " sum(credit) AS credit, "
+                                        " sum(debit)-sum(credit) AS balance, "
+                                        " sum(amount_currency) AS curr_balance"
+                                        " FROM account_move_line as l"
+                                        " LEFT JOIN account_move as m ON m.id = l.move_id"
+                                        " WHERE l.period_id in %s"
+                                        " AND l.account_id = %s"
+                                        " AND m.segment_id in %s",
+                                        (tuple(period_ids), account_id, tuple(segment_ids)))
+                else:
+                    self.cursor.execute("SELECT sum(debit) AS debit, "
+                                        " sum(credit) AS credit, "
+                                        " sum(debit)-sum(credit) AS balance, "
+                                        " sum(amount_currency) AS curr_balance"
+                                        " FROM account_move_line as l"
+                                        " LEFT JOIN account_move as m ON m.id = l.move_id"
+                                        " WHERE l.period_id in %s"
+                                        " AND l.account_id = %s",
+                                        (tuple(period_ids), account_id))
                 res = self.cursor.dictfetchone()
 
             except Exception:

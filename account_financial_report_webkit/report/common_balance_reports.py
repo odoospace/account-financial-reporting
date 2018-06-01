@@ -74,7 +74,7 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
 
         init_balance = False
         if initial_balance_mode == 'opening_balance':
-            init_balance = self._read_opening_balance(account_ids, start)
+            init_balance = self._read_opening_balance(account_ids, start, segment_ids)
         elif initial_balance_mode:
             init_balance = self._compute_initial_balances(
                 account_ids, start, fiscalyear, segment_ids)
@@ -88,6 +88,8 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
         elif main_filter == 'filter_date':
             ctx.update({'date_from': start,
                         'date_to': stop})
+        if segment_ids:
+            ctx.update({'segment_ids': segment_ids})
 
         # in tests (when installing and testing at the same time),
         # the read below might fail because it relies on the order
@@ -259,12 +261,11 @@ class CommonBalanceReportHeaderWebkit(CommonReportHeaderWebkit):
         chart_account = self._get_chart_account_id_br(data)
 
         segment_ids = self._get_form_param('segment_ids', data)
-
+        
         start_period, stop_period, start, stop = \
             self._get_start_stop_for_filter(main_filter, fiscalyear,
                                             start_date, stop_date,
                                             start_period, stop_period)
-
         init_balance = self.is_initial_balance_enabled(main_filter)
         initial_balance_mode = init_balance and self._get_initial_balance_mode(
             start) or False

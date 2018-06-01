@@ -42,7 +42,7 @@ class AccountTrialBalanceWizard(models.TransientModel):
         
         data['form']['segment_ids'] = segment_ids
         data = self.pre_print_report(cursor, uid, ids, data, context=context)
-
+        
         return {'type': 'ir.actions.report.xml',
                 'report_name': 'account.account_report_trial_balance_webkit',
                 'datas': data}
