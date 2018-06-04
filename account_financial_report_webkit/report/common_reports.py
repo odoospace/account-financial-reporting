@@ -482,7 +482,9 @@ class CommonReportHeaderWebkit(common_report_header):
         if not periods:
             return []
         search = [
-            ('period_id', 'in', periods), ('account_id', '=', account_id), ('segment_id', 'in', segment_ids)]
+            ('period_id', 'in', periods), ('account_id', '=', account_id)]
+        if segment_ids:
+            search += [('segment_id', 'in', segment_ids)]
         if target_move == 'posted':
             search += [('move_id.state', '=', 'posted')]
         return move_line_obj.search(self.cursor, self.uid, search)
@@ -493,8 +495,9 @@ class CommonReportHeaderWebkit(common_report_header):
         move_line_obj = self.pool.get('account.move.line')
         search_period = [('date', '>=', date_start),
                          ('date', '<=', date_stop),
-                         ('account_id', '=', account_id),
-                         ('segment_id', 'in', segment_ids)]
+                         ('account_id', '=', account_id)]
+        if segment_id:
+            search_period += [('segment_id', 'in', segment_ids)]
 
         # actually not used because OpenERP itself always include the opening
         # when we get the periods from january to december
