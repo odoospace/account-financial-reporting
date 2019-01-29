@@ -1,6 +1,25 @@
 # -*- coding: utf-8 -*-
-# Copyright 2009-2016 Noviat
-# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+##############################################################################
+#
+#    OpenERP, Open Source Management Solution
+#
+#    Copyright (c) 2013 Noviat nv/sa (www.noviat.com). All rights reserved.
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 import xlwt
 from datetime import datetime
 from openerp.addons.report_xls.report_xls import report_xls
@@ -18,7 +37,6 @@ _column_sizes = [
     ('journal', 12),
     ('account_code', 12),
     ('partner', 30),
-    ('ref', 30),
     ('label', 45),
     ('counterpart', 30),
     ('debit', 15),
@@ -29,12 +47,15 @@ _column_sizes = [
 ]
 
 
-class GeneralLedgerXls(report_xls):
+class general_ledger_xls(report_xls):
     column_sizes = [x[1] for x in _column_sizes]
 
-    def generate_xls_report(self, _p, _xs, data, objects, wb):
-
-        ws = wb.add_sheet(_p.report_name[:31])
+    def _new_ws_with_header(self, _p, _xs, data, wb, sheet_index=None):
+        report_name = _p.report_name[:31]
+        if sheet_index:
+            report_name = "%s %s" % (report_name[:29], sheet_index)
+            wb.active_sheet = sheet_index
+        ws = wb.add_sheet(report_name)
         ws.panes_frozen = True
         ws.remove_splits = True
         ws.portrait = 0  # Landscape
@@ -118,7 +139,18 @@ class GeneralLedgerXls(report_xls):
             ws, row_pos, row_data, row_style=cell_style_center)
         ws.set_horz_split_pos(row_pos)
         row_pos += 1
+        return ws, row_pos
 
+        def _get_ws_row_pos(self, _p, _xs, data, wb, ws, row_pos):
+        if row_pos >= 64000:
+            sheet_index = ws.parent.active_sheet + 1
+            ws, row_pos = self._new_ws_with_header(
+                _p, _xs, data, wb, sheet_index)
+        return ws, row_pos
+
+    def generate_xls_report(self, _p, _xs, data, objects, wb):
+        ws, row_pos = self._new_ws_with_header(_p, _xs, data, wb)
+        
         # Column Title Row
         cell_format = _xs['bold']
         c_title_cell_style = xlwt.easyxf(cell_format)
@@ -147,7 +179,6 @@ class GeneralLedgerXls(report_xls):
             ('account_code', 1, 0, 'text',
              _('Account'), None, c_hdr_cell_style),
             ('partner', 1, 0, 'text', _('Partner'), None, c_hdr_cell_style),
-            ('ref', 1, 0, 'text', _('Reference'), None, c_hdr_cell_style),
             ('label', 1, 0, 'text', _('Label'), None, c_hdr_cell_style),
             ('counterpart', 1, 0, 'text',
              _('Counterpart'), None, c_hdr_cell_style),
@@ -179,11 +210,12 @@ class GeneralLedgerXls(report_xls):
 
         cnt = 0
         for account in objects:
-
+            ws, row_pos = self._get_ws_row_pos(_p, _xs, data, wb, ws, row_pos)
             display_initial_balance = _p['init_balance'][account.id] and \
                 (_p['init_balance'][account.id].get(
                     'debit', 0.0) != 0.0 or
-                    _p['init_balance'][account.id].get('credit', 0.0) != 0.0)
+                    _p['init_balance'][account.id].get('credit', 0.0)
+                    != 0.0)
             display_ledger_lines = _p['ledger_lines'][account.id]
 
             if _p.display_account_raw(data) == 'all' or \
@@ -213,7 +245,7 @@ class GeneralLedgerXls(report_xls):
                     cumul_balance_curr = init_balance.get(
                         'init_balance_currency') or 0.0
                     c_specs = [('empty%s' % x, 1, 0, 'text', None)
-                               for x in range(7)]
+                               for x in range(6)]
                     c_specs += [
                         ('init_bal', 1, 0, 'text', _('Initial Balance')),
                         ('counterpart', 1, 0, 'text', None),
@@ -265,7 +297,6 @@ class GeneralLedgerXls(report_xls):
                         ('account_code', 1, 0, 'text', account.code),
                         ('partner', 1, 0, 'text',
                          line.get('partner_name') or ''),
-                        ('ref', 1, 0, 'text', line.get('lref')),
                         ('label', 1, 0, 'text', label),
                         ('counterpart', 1, 0, 'text',
                          line.get('counterparts') or ''),
@@ -290,17 +321,17 @@ class GeneralLedgerXls(report_xls):
                     row_pos = self.xls_write_row(
                         ws, row_pos, row_data, ll_cell_style)
 
-                debit_start = rowcol_to_cell(row_start, 9)
-                debit_end = rowcol_to_cell(row_pos - 1, 9)
+                debit_start = rowcol_to_cell(row_start, 8)
+                debit_end = rowcol_to_cell(row_pos - 1, 8)
                 debit_formula = 'SUM(' + debit_start + ':' + debit_end + ')'
-                credit_start = rowcol_to_cell(row_start, 10)
-                credit_end = rowcol_to_cell(row_pos - 1, 10)
+                credit_start = rowcol_to_cell(row_start, 9)
+                credit_end = rowcol_to_cell(row_pos - 1, 9)
                 credit_formula = 'SUM(' + credit_start + ':' + credit_end + ')'
-                balance_debit = rowcol_to_cell(row_pos, 9)
-                balance_credit = rowcol_to_cell(row_pos, 10)
+                balance_debit = rowcol_to_cell(row_pos, 8)
+                balance_credit = rowcol_to_cell(row_pos, 9)
                 balance_formula = balance_debit + '-' + balance_credit
                 c_specs = [
-                    ('acc_title', 8, 0, 'text',
+                    ('acc_title', 7, 0, 'text',
                      ' - '.join([account.code, account.name])),
                     ('cum_bal', 1, 0, 'text',
                      _('Cumulated Balance on Account'),
@@ -326,7 +357,6 @@ class GeneralLedgerXls(report_xls):
                     ws, row_pos, row_data, c_hdr_cell_style)
                 row_pos += 1
 
-
-GeneralLedgerXls('report.account.account_report_general_ledger_xls',
+general_ledger_xls('report.account.account_report_general_ledger_xls',
                  'account.account',
                  parser=GeneralLedgerWebkit)
