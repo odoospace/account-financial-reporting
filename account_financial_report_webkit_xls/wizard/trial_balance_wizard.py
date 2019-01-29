@@ -18,11 +18,15 @@ class AccountTrialBalanceWizard(models.TransientModel):
             # we update form with display account value
             vals = self.read(cr, uid, ids, ['analytic_segment_ids'], context=context)[0]
             segment_ids = []
+            segment_obj = self.pool.get('analytic_segment.segment')
+            segment_tmpl_ids = []
             for i in vals['analytic_segment_ids']:
                 segment = self.pool.get('trial.balance.webkit.segments').browse(cr, uid, i)
                 segment_ids += [segment.segment_id.id]
                 if segment.with_children:
-                    segment_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
+                    segment_tmpl_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
+            
+            segment_ids += segment_obj.search(cr, uid, [['segment_tmpl_id', 'in', segment_tmpl_ids]])
 
             data['form']['segment_ids'] = segment_ids
             data = self.pre_print_report(cr, uid, ids, data, context=context)
