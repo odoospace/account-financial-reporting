@@ -42,7 +42,7 @@ class AccountTrialBalanceWizard(models.TransientModel):
             if segment.with_children:
                 segment_tmpl_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
         
-        segment_ids += segment_obj.search(cr, uid, [['segment_tmpl_id', 'in', segment_tmpl_ids]])
+        segment_ids += segment_obj.search(cursor, uid, [['segment_tmpl_id', 'in', segment_tmpl_ids]])
         
         data['form']['segment_ids'] = segment_ids
         data = self.pre_print_report(cursor, uid, ids, data, context=context)
