@@ -37,7 +37,7 @@ class AccountTrialBalanceWizard(models.TransientModel):
         segment_obj = self.pool.get('analytic_segment.segment')
         segment_tmpl_ids = []
         for i in vals['analytic_segment_ids']:
-            segment = self.pool.get('trial.balance.webkit.segments').browse(cr, uid, i)
+            segment = self.pool.get('trial.balance.webkit.segments').browse(cursor, uid, i)
             segment_ids += [segment.segment_id.id]
             if segment.with_children:
                 segment_tmpl_ids += segment.segment_id.segment_tmpl_id.get_childs_ids()
