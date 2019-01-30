@@ -141,12 +141,12 @@ class general_ledger_xls(report_xls):
         row_pos += 1
         return ws, row_pos
 
-        def _get_ws_row_pos(self, _p, _xs, data, wb, ws, row_pos):
-            if row_pos >= 64000:
-                sheet_index = ws.parent.active_sheet + 1
-                ws, row_pos = self._new_ws_with_header(
-                    _p, _xs, data, wb, sheet_index)
-            return ws, row_pos
+    def _get_ws_row_pos(self, _p, _xs, data, wb, ws, row_pos):
+        if row_pos >= 64000:
+            sheet_index = ws.parent.active_sheet + 1
+            ws, row_pos = self._new_ws_with_header(
+                _p, _xs, data, wb, sheet_index)
+        return ws, row_pos
 
     def generate_xls_report(self, _p, _xs, data, objects, wb):
         ws, row_pos = self._new_ws_with_header(_p, _xs, data, wb)
